@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/airchains-network/solana-seq-indexer/common/logs"
+	"github.com/airchains-network/svm-sequencer-node/common/logs"
 	"github.com/btcsuite/btcutil/base58"
 	"math/big"
 	"net/http"

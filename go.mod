@@ -1,4 +1,4 @@
-module github.com/airchains-network/solana-seq-indexer
+module github.com/airchains-network/svm-sequencer-node
 
 go 1.21
 

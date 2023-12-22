@@ -3,13 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	air "github.com/airchains-network/solana-seq-indexer/airdb/air-leveldb"
-	"github.com/airchains-network/solana-seq-indexer/common/logs"
-	"github.com/airchains-network/solana-seq-indexer/handlers"
-	"github.com/airchains-network/solana-seq-indexer/prover"
-	"github.com/airchains-network/solana-seq-indexer/types"
+	air "github.com/airchains-network/svm-sequencer-node/airdb/air-leveldb"
+	"github.com/airchains-network/svm-sequencer-node/common/logs"
+	"github.com/airchains-network/svm-sequencer-node/handlers"
+	settlement_client "github.com/airchains-network/svm-sequencer-node/handlers/settlement-client"
+	"github.com/airchains-network/svm-sequencer-node/prover"
+	"github.com/airchains-network/svm-sequencer-node/types"
 	"os"
 	"sync"
+	"time"
 )
 
 func main() {
@@ -22,6 +24,15 @@ func main() {
 	}
 
 	prover.CreateVkPk()
+	chainId := settlement_client.AddExecutionLayer()
+	if chainId == "nil" {
+		logs.LogMessage("ERROR:", "Something went wrong while adding execution layer")
+		logs.LogMessage("INFO:", "Retrying in 5 seconds...")
+		time.Sleep(5 * time.Second)
+		chainId = settlement_client.AddExecutionLayer()
+	} else if chainId == "exist" {
+		logs.LogMessage("INFO:", "Chain already exist")
+	}
 
 	ldt := air.GetTxDbInstance()
 	ldb := air.GetBlockDbInstance()

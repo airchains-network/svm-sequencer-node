@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	air "github.com/airchains-network/solana-seq-indexer/airdb/air-leveldb"
-	"github.com/airchains-network/solana-seq-indexer/common"
-	"github.com/airchains-network/solana-seq-indexer/types"
+	air "github.com/airchains-network/svm-sequencer-node/airdb/air-leveldb"
+	"github.com/airchains-network/svm-sequencer-node/common"
+	"github.com/airchains-network/svm-sequencer-node/types"
 	"math/rand"
 	"os"
 	"time"
@@ -38,7 +38,7 @@ type MyCircuit struct {
 }
 
 func getTransactionHash(tx types.GetTransactionStruct) string {
-	record := tx.To + tx.From + fmt.Sprintf("%f", tx.Amount) + fmt.Sprintf("%f", tx.FromBalances) + fmt.Sprintf("%f", tx.ToBalances)
+	record := tx.To + tx.From + tx.Amount + tx.FromBalances + tx.ToBalances + tx.TransactionHash
 	h := sha256.New()
 	h.Write([]byte(record))
 	return hex.EncodeToString(h.Sum(nil))
@@ -149,7 +149,6 @@ func (circuit *MyCircuit) Define(api frontend.API) error {
 	}
 
 	_ = GetMerkleRoot(api, leaves)
-	//api.Println("Merkle root : ", root)
 	return nil
 }
 
@@ -170,7 +169,7 @@ func GenerateVerificationKey() (groth16.ProvingKey, groth16.VerifyingKey, error)
 // GenerateProof generates a proof for the given input data
 // and returns the proof and the error
 // batchDbCount is the number of batches in the database and it will be passed as batchNum here
-func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, error) {
+func GenerateProof(inputData types.BatchStruct, batchNum int) (any, string, []byte, error) {
 
 	ccs := ComputeCCS()
 
@@ -179,19 +178,20 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 		transaction := types.GetTransactionStruct{
 			To:              inputData.To[i],
 			From:            inputData.From[i],
-			Amount:          0,
-			FromBalances:    0,
-			ToBalances:      0,
+			Amount:          inputData.Amounts[i],
+			FromBalances:    inputData.SenderBalances[i],
+			ToBalances:      inputData.ReceiverBalances[i],
 			TransactionHash: inputData.TransactionHash[i],
 		}
 		transactions = append(transactions, transaction)
 	}
 
-	currentStateHash := GetMerkleRootCheck(transactions)
+	currentStatusHash := GetMerkleRootCheck(transactions)
 
 	if _, err := os.Stat("provingKey.txt"); os.IsNotExist(err) {
 		fmt.Println("Proving key does not exist. Please run the command 'sequencer-sdk create-vk-pk' to generate the proving key")
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 
 	pk, err := ReadProvingKeyFromFile("provingKey.txt")
@@ -200,7 +200,8 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 
 	if err != nil {
 		fmt.Println("Error reading proving key:", err)
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 	fmt.Println("STEP 5: Generating proof")
 
@@ -210,7 +211,8 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 	snarkField, err := twistededwards.GetSnarkField(tedwards.BLS12_381)
 	if err != nil {
 		fmt.Println("Error getting snark field")
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 	var inputValueLength int
 
@@ -235,7 +237,7 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 		inputValueLength = fromLength
 	} else {
 		fmt.Println("Error: Input data is not correct")
-		return nil, "", fmt.Errorf("input data is not correct")
+		return nil, "", nil, fmt.Errorf("input data is not correct")
 	}
 
 	if inputValueLength < common.BatchSize {
@@ -286,7 +288,8 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 		signature, err := privateKey.Sign(msg, hFunc)
 		if err != nil {
 			fmt.Println("Error signing the message")
-			return nil, "", err
+			return nil, "", nil, err
+
 		}
 		// Public key
 		_publicKey := publicKey.Bytes()
@@ -300,8 +303,12 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 	witness, err := frontend.NewWitness(&inputs, ecc.BLS12_381.ScalarField())
 	if err != nil {
 		fmt.Printf("Error creating a witness: %v\n", err)
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
+
+	witnessVector := witness.Vector()
+
 	publicWitness, _ := witness.Public()
 	publicWitnessDb := air.GetPublicWitnessDbInstance()
 	publicWitnessDbKey := fmt.Sprintf("public_witness_%d", batchNum)
@@ -309,18 +316,21 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 	publicWitnessDbValue, err := json.Marshal(publicWitness)
 	if err != nil {
 		fmt.Println("Error marshalling public witness:", err)
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 	err = publicWitnessDb.Put([]byte(publicWitnessDbKey), publicWitnessDbValue, nil)
 	if err != nil {
 		fmt.Println("Error saving public witness:", err)
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 	fmt.Println("STEP 8: Generating proof")
 	proof, err := groth16.Prove(ccs, pk, witness)
 	if err != nil {
 		fmt.Printf("Error generating proof: %v\n", err)
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 
 	proofDb := air.GetProofDbInstance()
@@ -328,16 +338,19 @@ func GenerateProof(inputData types.BatchStruct, batchNum int) ([]byte, string, e
 	proofDbValue, err := json.Marshal(proof)
 	if err != nil {
 		fmt.Println("Error marshalling proof:", err)
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 	err = proofDb.Put([]byte(proofDbKey), proofDbValue, nil)
 	if err != nil {
 		fmt.Println("Error saving proof:", err)
-		return nil, "", err
+		return nil, "", nil, err
+
 	}
 	fmt.Println("STEP 9: Generating proof")
 
-	return proofDbValue, currentStateHash, nil
+	return witnessVector, currentStatusHash, proofDbValue, nil
+
 }
 
 func ReadProvingKeyFromFile(filename string) (groth16.ProvingKey, error) {

@@ -1,4 +1,4 @@
-rm -rf data/leveldb
+sudo rm -rf data/leveldb
 mkdir -p data/leveldb/batches
 mkdir -p data/leveldb/blocks
 mkdir -p data/leveldb/proof

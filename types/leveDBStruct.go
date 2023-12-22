@@ -38,3 +38,8 @@ type DAStruct struct {
 	PreviousStateHash string `json:"previous_state_hash"`
 	CurrentStateHash  string `json:"current_state_hash"`
 }
+
+type SettlementLayerChainInfoStruct struct {
+	ChainId   string `json:"chain_id"`
+	ChainName string `json:"chain_name"`
+}

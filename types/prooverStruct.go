@@ -3,8 +3,8 @@ package types
 type GetTransactionStruct struct {
 	To              string
 	From            string
-	Amount          float64
-	FromBalances    float64
-	ToBalances      float64
+	Amount          string
+	FromBalances    string
+	ToBalances      string
 	TransactionHash string
 }

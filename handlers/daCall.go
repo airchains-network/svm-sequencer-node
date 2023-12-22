@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	air "github.com/airchains-network/solana-seq-indexer/airdb/air-leveldb"
-	"github.com/airchains-network/solana-seq-indexer/common"
-	"github.com/airchains-network/solana-seq-indexer/common/logs"
-	"github.com/airchains-network/solana-seq-indexer/types"
+	air "github.com/airchains-network/svm-sequencer-node/airdb/air-leveldb"
+	"github.com/airchains-network/svm-sequencer-node/common"
+	"github.com/airchains-network/svm-sequencer-node/common/logs"
+	"github.com/airchains-network/svm-sequencer-node/types"
 	"github.com/syndtr/goleveldb/leveldb"
 	"net/http"
 	"strconv"
@@ -95,7 +95,7 @@ func DaCall(transactions []string, currentStateHash string, batchNumber int, ldd
 		DAKey:             response.DaKeyHash,
 		DAClientName:      "celestia",
 		BatchNumber:       strconv.Itoa(batchNumber),
-		PreviousStateHash: daDecode.PreviousStateHash,
+		PreviousStateHash: daDecode.CurrentStateHash,
 		CurrentStateHash:  currentStateHash,
 	}
 
