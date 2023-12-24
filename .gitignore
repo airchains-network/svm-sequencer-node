@@ -4,3 +4,4 @@ provingKey.txt
 verificationKey.json
 /.idea
 /.trunk
+.env

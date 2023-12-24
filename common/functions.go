@@ -6,11 +6,37 @@ import (
 	"fmt"
 	"github.com/airchains-network/svm-sequencer-node/common/logs"
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/joho/godotenv"
 	"math/big"
 	"net/http"
 	"os"
 	"strconv"
 )
+
+func ENVCheck() (string, string) {
+
+	err := godotenv.Load()
+	if err != nil {
+		return "", fmt.Sprintf("Error in loading .env file")
+	}
+
+	ExecutionClientRPC = os.Getenv("ExecutionClientRPC")
+	if ExecutionClientRPC == "" {
+		return "", fmt.Sprintf("ExecutionClientRPC is not set")
+	}
+
+	DaClientRPC = os.Getenv("DaClientRPC")
+	if ExecutionClientRPC == "" {
+		return "", fmt.Sprintf("DaClientRPC is not set")
+	}
+
+	SettlementClientRPC = os.Getenv("SettlementClientRPC")
+	if ExecutionClientRPC == "" {
+		return "", fmt.Sprintf("SettlementClientRPC is not set")
+	}
+
+	return "ENV check", ""
+}
 
 func Base52Decoder(value string) string {
 	decodedBytes := base58.Decode(value)

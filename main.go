@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	air "github.com/airchains-network/svm-sequencer-node/airdb/air-leveldb"
+	"github.com/airchains-network/svm-sequencer-node/common"
 	"github.com/airchains-network/svm-sequencer-node/common/logs"
 	"github.com/airchains-network/svm-sequencer-node/handlers"
 	settlement_client "github.com/airchains-network/svm-sequencer-node/handlers/settlement-client"
@@ -16,6 +17,12 @@ import (
 
 func main() {
 	logs.LogMessage("INFO:", "Starting Solana Seq Indexer")
+
+	_, envError := common.ENVCheck()
+	if envError != "" {
+		logs.LogMessage("ERROR:", envError)
+		os.Exit(0)
+	}
 
 	dbStatus := air.InitDb()
 	if !dbStatus {
